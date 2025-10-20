@@ -6,8 +6,8 @@ fn main() {
     //threads::threads();
     //threads::thread_join();
     //threads::inter_thread();
-    threads::channels();
-    // threads::async_with_channels();
+    //threads::channels();
+    threads::async_with_channels();
     // rect::test();
     // ls::ls();
 }

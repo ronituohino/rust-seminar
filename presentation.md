@@ -2,7 +2,7 @@
 marp: true
 theme: rose-pine-moon
 paginate: true
-footer: Roni Tuohino | rt@ronituohino.com | 17.10.2025
+footer: Roni Tuohino | rt@ronituohino.com | 20.11.2025
 title: Async Rust
 author: Roni Tuohino
 ---
@@ -25,6 +25,17 @@ Asynchronous, Non-blocking: A can continue while B executes
 
 ---
 
+## In other languages
+
+The whole idea of `async/await` and `Task/Promise` semantics is to have easy
+control over asynchronous operations with synchronous code.
+
+---
+
+## But Rust is built different
+
+---
+
 ## Threads
 
 If the work is very parallelizable, such as processing a bunch of data where
@@ -39,7 +50,7 @@ If the work is very concurrent, such as handling messages from a bunch of
 different sources that may come in at different intervals or different rates,
 async **might be** a better choice.
 
-Requires an _async runtime_ or an _executor_, which is not built-in to Rust  
+Requires an _async runtime_ (_executor_), which is not built-in to Rust  
 => Software managed
 
 ---
@@ -168,8 +179,9 @@ traits also automatically implement `Send` and `Sync`.
 
 ```rust
 use std::sync::mpsc;
+use std::thread;
 
-pub fn channels() {
+fn main() {
     let (tx, rx) = mpsc::channel::<i32>();
     let mut handles = vec![];
 
@@ -196,6 +208,46 @@ pub fn channels() {
 
 Got: 45
 ```
+
+---
+
+```rust
+use std::sync::mpsc;
+use std::thread;
+
+fn main() {
+    let (tx, rx) = mpsc::channel::<std::string::String>();
+    thread::spawn(move || {
+        let val = String::from("hi");
+        tx.send(val).unwrap();
+    });
+
+    loop {
+        let received_nb = rx.try_recv();
+        match received_nb {
+            Ok(val) => {
+                println!("Got: {val}");
+                break;
+            }
+            Err(_) => println!("Not received yet, doing other work..."),
+        }
+    }
+}
+
+->
+
+Not received yet, doing other work...
+Not received yet, doing other work...
+Not received yet, doing other work...
+Not received yet, doing other work...
+Got: hi
+```
+
+---
+
+My take from ;
+
+You can do a lot of things with Threads and Channels. Avoid
 
 ---
 
