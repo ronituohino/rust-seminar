@@ -3,9 +3,11 @@ mod rect;
 mod threads;
 
 fn main() {
-    threads::inter_thread();
+    //threads::threads();
+    //threads::thread_join();
+    //threads::inter_thread();
+    threads::channels();
     // threads::async_with_channels();
-    // threads::thread_join();
     // rect::test();
     // ls::ls();
 }

@@ -2,17 +2,12 @@ use std::thread;
 use std::time::Duration;
 
 pub fn threads() {
-    // non-blocking
-    let v = vec![1, 2, 3];
-
-    thread::spawn(move || {
-        println!("Here's a vector: {v:?}");
-        for i in 1..10 {
+    thread::spawn(|| {
+        for i in 1..3 {
             println!("hi number {i} from the spawned thread!");
             thread::sleep(Duration::from_millis(1));
         }
     });
-
     for i in 1..5 {
         println!("hi number {i} from the main thread!");
         thread::sleep(Duration::from_millis(1));
@@ -20,9 +15,10 @@ pub fn threads() {
 }
 
 pub fn thread_join() {
-    // blocking with join()
-    let handle = thread::spawn(|| {
-        for i in 1..10 {
+    let v = vec![1, 2, 3];
+    let handle = thread::spawn(move || {
+        println!("moved value {:?}", v);
+        for i in 1..3 {
             println!("hi number {i} from the spawned thread!");
             thread::sleep(Duration::from_millis(1));
         }
@@ -42,12 +38,11 @@ pub fn inter_thread() {
     let counter = Arc::new(Mutex::new(0));
     let mut handles = vec![];
 
-    for _ in 0..10 {
+    for i in 0..10 {
         let counter = Arc::clone(&counter);
         let handle = thread::spawn(move || {
             let mut num = counter.lock().unwrap();
-
-            *num += 1;
+            *num += i;
         });
         handles.push(handle);
     }
@@ -61,23 +56,28 @@ pub fn inter_thread() {
 
 // channels offer a nicer alternative
 use std::sync::mpsc;
+
 pub fn channels() {
-    // multiple producer, single consumer
-    let (tx, rx) = mpsc::channel::<std::string::String>();
-    // let tx1 = tx.clone(); ... (multiple)
+    let (tx, rx) = mpsc::channel::<i32>();
+    let mut handles = vec![];
 
-    thread::spawn(move || {
-        let val = String::from("hi");
-        tx.send(val).unwrap();
-    });
+    for i in 1..10 {
+        let tx_h = tx.clone();
+        let handle = thread::spawn(move || {
+            tx_h.send(i).unwrap();
+        });
+        handles.push(handle);
+    }
 
-    // blocking i/o
-    let rec = rx.recv().unwrap();
-    println!("Got: {rec}");
+    for handle in handles {
+        handle.join().unwrap();
+    }
 
-    // for rec_it in rx {
-    //     println!("Got {rec_it}")
-    // }
+    let mut total = 0;
+    for v in rx.try_iter() {
+        total += v;
+    }
+    println!("Got: {total}");
 }
 
 pub fn async_with_channels() {
