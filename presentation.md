@@ -13,26 +13,87 @@ author: Roni Tuohino
 
 ## Terminology
 
-Serial, Sequential: Finish A, then finish B, then finish C  
-Concurrent: Do A, B, and C **alternately**  
-Parallel: Do A, B, and C **simultaneously**
+- Serial, Sequential: Finish A, then finish B, then finish C
+- Concurrent: Do A, B, and C **alternately**
+- Parallel: Do A, B, and C **simultaneously**
 
-Synchronous, Blocking: A must wait for B to finish  
-<small>(B = blocking, inherently serial)</small>
+- Synchronous, Blocking: A must wait for B to finish  
+  <small>(B = blocking, inherently serial)</small>
 
-Asynchronous, Non-blocking: A can continue while B executes  
-<small>(B = non-blocking, potential for parallelism)</small>
+- Asynchronous, Non-blocking: A can continue while B executes  
+  <small>(B = non-blocking, potential for parallelism)</small>
 
 ---
 
-## In other languages
+## Generally
 
-The whole idea of `async/await` and `Task/Promise` semantics is to have easy
-control over asynchronous operations with synchronous code.
+The idea of asynchronous code is to allow things to run in the background while
+doing other stuff (Concurrency). Extremely useful in languges where you don't
+want to get into Threads or in environemnts that don't support Parallel
+execution.
+
+The idea of `async/await` and `Task/Promise` semantics is to have good control
+over asynchronous operations while keeping code easy to read.
 
 ---
 
 ## But Rust is built different
+
+Compared to other languages, Rust makes it very easy to work with Threads.
+
+---
+
+## The Rust lifetime model with Threads and Async
+
+```rust
+pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+where
+    F: FnOnce() -> T,
+    F: Send + 'static,
+    T: Send + 'static,
+```
+
+---
+
+## `'static` as reference lifetime
+
+Indicates that the data pointed to by the reference lives for the remaining
+lifetime of the running program, though it can still be coerced to a shorter
+lifetime.
+
+---
+
+## `'static` as trait bound
+
+Mandates that the type does not contain any non-static references. This means
+the receiver can hold on to the type indefinitely without it becoming invalid
+until they decide to drop it.
+
+---
+
+## `'static` in async
+
+Async tasks often require `'static` data, to guarantee that the data lives long
+enough or to ensure ownership is transferred to the task, because tasks in async
+runtimes may outlive the scope they were created in.
+
+-> Borrowed data must live as long as the task
+
+-> Hard (or in practice impossible) to use references in async code
+
+-> In synchronous Rust borrowing data across function calls is common
+
+-> Async Rust is fundamentally different
+
+---
+
+"The Original Sin of Rust async programming is making it multi-threaded by
+default. If premature optimization is the root of all evil, this is the mother
+of all premature optimizations, and it curses all your code with the unholy
+`Send + 'static`, or worse yet `Send + Sync + 'static`, which just kills all the
+joy of actually writing Rust."
+
+<small>Maciej Hirsz</small>
 
 ---
 
