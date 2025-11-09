@@ -9,6 +9,17 @@ author: Roni Tuohino
 
 # Async Rust
 
+A short overview of threading, channels, and async.
+
+<style>
+    .yellow {
+        color: #ffea76ff;
+    }
+    .blue {
+        color: #4fd6ffff;
+    }
+</style>
+
 ---
 
 ## Terminology
@@ -25,24 +36,18 @@ author: Roni Tuohino
 
 ---
 
-## Threads
-
-Allows using multiple cores to run stuff that has potential for parallelism.
-
-Requires an OS that supports threads.  
-=> OS managed
-
-## Async
-
-Allow things to run in the background while doing other stuff.
-
-Rust has `Future` trait and `async` & `await` keywords but requires an _async
-runtime_ (_executor_) to run `async` blocks, which is not built-in to Rust.  
-=> Runtime / process managed
+| Threads                                                                                     | Async                                                                                                                            |
+| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Allows using multiple cores to run stuff that has potential for parallelism                 | Allow things to run in the background while doing other stuff                                                                    |
+| Requires an OS that supports threads, and a threading implementation, such as `std::thread` | Requires `Futures` implementation such as `std::future`, and requires an _async runtime_ (i.e. _executor_) to run `async` blocks |
+| OS managed                                                                                  | Runtime managed                                                                                                                  |
+| Context switches when switching between threads (~2 μs)                                     | Runtime switching between tasks (~500 ns).                                                                                       |
 
 ---
 
 ## Threads
+
+(std)
 
 ---
 
@@ -63,174 +68,10 @@ fn main() {
     }
 }
 
-->
-
-hi number 1 from the main thread!
-hi number 1 from the spawned thread!
-hi number 2 from the main thread!
-hi number 2 from the spawned thread!
-hi number 3 from the main thread!
-hi number 4 from the main thread!
-```
-
----
-
-```rust
-pub fn spawn<F, T>(f: F) -> JoinHandle<T>
-where
-    F: FnOnce() -> T,
-    F: Send + 'static,
-    T: Send + 'static,
-```
-
----
-
-## FnOnce
-
-```rust
-fn consume<F>(func: F)
-    where F: FnOnce() -> String
-{
-    println!("Consumed: {}", func());
-    // Invoking `func()` again -> compile error
-}
-
-let x = String::from("x");
-let move_and_return_x_closure = move || x;
-consume(move_and_return_x_closure);
-// Invoking `move_and_return_x_closure` again -> compile error
-// Using `x` again -> compile error
-```
-
----
-
-## Send
-
-Any type that implements `Send` can transfer ownership between threads.
-
-e.g. `Rc<T>` does not implement `Send`, but `Arc<T>` does.
-
-## Sync
-
-Any type that implements `Sync` can be referenced from multiple threads.
-
-e.g. `RefCell<T>` and `Cell<T>` do not implement `Sync`, but `Mutex<T>` does.
-
-`T` is `Sync` if and only if `&T` is `Send`
-
----
-
-## 'static as reference lifetime
-
-Indicates that the data pointed to by the reference lives for the remaining
-lifetime of the running program, though it can still be coerced to a shorter
-lifetime.
-
----
-
-## 'static as trait bound
-
-Mandates that the type does not contain any non-static references. This means
-the receiver can hold on to the type indefinitely without it becoming invalid
-until they decide to drop it.
-
----
-
-## Async
-
----
-
-## Tokio
-
-The most widely used async runtime in the Rust ecosystem.
-
----
-
-## Generally
-
-The idea of asynchronous code is to (Concurrency). Extremely useful in languges
-where you don't want to get into Threads or in environemnts that don't support
-Parallel execution.
-
-The idea of `async/await` and `Task/Promise` semantics is to have good control
-over asynchronous operations while keeping code easy to read.
-
----
-
-## But Rust is built different
-
-Compared to other languages, Rust makes it very easy to work with Threads.
-
----
-
-## 'static
-
-Tasks in async runtimes may outlive the scope they were created in, so they
-often have `'static` as a trait bound.
-
-(call functions with data that lives long enough, or transfer ownership)
-
--> Borrowed data must live as long as the task
-
--> Hard to use references in async code
-
--> In synchronous Rust borrowing data across function calls is common
-
--> Async Rust is fundamentally different
-
----
-
-<style>
-    .blue {
-        color: #ffea76ff;
-    }
-    .red {
-        color: #4fd6ffff;
-    }
-</style>
-
-<span class="blue">"The Original Sin of Rust async programming is making it
-multi-threaded by default. If premature optimization is the root of all evil,
-this is the mother of all premature optimizations,</span> <span class="red">and
-it curses all your code with the unholy `Send + 'static`, or worse yet
-`Send + Sync + 'static`, which just kills all the joy of actually writing
-Rust."</span>
-
-<small>Maciej Hirsz</small>
-
----
-
-```rust
-use std::thread;
-use std::time::Duration;
-
-fn main() {
-    let v = vec![1, 2, 3];
-    let handle = thread::spawn(move || {
-        println!("moved value {:?}", v);
-        for i in 1..3 {
-            println!("hi number {i} from the spawned thread!");
-            thread::sleep(Duration::from_millis(1));
-        }
-    });
-
-    handle.join().unwrap();
-
-    for i in 1..5 {
-        println!("hi number {i} from the main thread!");
-        thread::sleep(Duration::from_millis(1));
-    }
-}
-
-->
-
-moved value [1, 2, 3]
-hi number 1 from the spawned thread!
-hi number 2 from the spawned thread!
-hi number 1 from the main thread!
-hi number 2 from the main thread!
-hi number 3 from the main thread!
-hi number 4 from the main thread!
+// hi number 1 from the main thread!
+// hi number 1 from the spawned thread!
+// hi number 2 from the main thread!
+// ...
 ```
 
 ---
@@ -258,17 +99,12 @@ fn main() {
     println!("Result: {}", *counter.lock().unwrap());
 }
 
-->
-
-Result: 45
+// Result: 45
 ```
 
 ---
 
-Types composed entirely of other types that implement the `Send` and `Sync`
-traits also automatically implement `Send` and `Sync`.
-
----
+## Go - goroutines and channels
 
 "Don't communicate by sharing memory; share memory by communicating"  
 <small>(R.Pike)</small>
@@ -282,7 +118,6 @@ use std::thread;
 fn main() {
     let (tx, rx) = mpsc::channel::<i32>();
     let mut handles = vec![];
-
     for i in 1..10 {
         let tx_h = tx.clone();
         let handle = thread::spawn(move || {
@@ -302,9 +137,7 @@ fn main() {
     println!("Got: {total}");
 }
 
-->
-
-Got: 45
+// Got: 45
 ```
 
 ---
@@ -332,20 +165,55 @@ fn main() {
     }
 }
 
-->
-
-Not received yet, doing other work...
-Not received yet, doing other work...
-Not received yet, doing other work...
-Not received yet, doing other work...
-Got: hi
+// Not received yet, doing other work...
+// Not received yet, doing other work...
+// Got: hi
 ```
 
 ---
 
-My take from ;
+```rust
+// std::thread::spawn
 
-You can do a lot of things with Threads and Channels. Avoid
+pub fn spawn<F, T>(f: F) -> JoinHandle<T>
+where
+    F: FnOnce() -> T,
+    F: Send + 'static,
+    T: Send + 'static,
+```
+
+---
+
+## Send
+
+Any type that implements `Send` can transfer ownership between threads safely.
+
+e.g. `Rc<T>` does not implement `Send`, but `Arc<T>` does.
+
+## Sync
+
+Any type that implements `Sync` can be referenced from multiple threads safely.
+
+e.g. `RefCell<T>` and `Cell<T>` do not implement `Sync`, but `Mutex<T>` does.
+
+---
+
+### Relationship between Send and Sync
+
+`T` is `Sync` if and only if `&T` is `Send`
+
+-- also --
+
+Types composed entirely of other types that implement the `Send` and `Sync`
+traits also automatically implement `Send` and `Sync`.
+
+---
+
+## 'static as trait bound
+
+Mandates that the type does not contain any non-static references. This means
+the receiver can hold on to the type indefinitely without it becoming invalid
+until they decide to drop it.
 
 ---
 
@@ -353,14 +221,196 @@ You can do a lot of things with Threads and Channels. Avoid
 
 ---
 
-Hello
+## Generally
+
+The idea of `async/await` and `Task/Promise/Future` semantics in programming
+languages is to have better control over asynchronous operations while keeping
+code simple.
+
+- Do `x` while waiting for `y`
+- Wait for all/any of `n` things to finish
+- Code is significantly easier to read
+- Error handling becomes a breeze
 
 ---
 
-`async`
+## In Rust
 
-`await`
+```rust
+// async
 
-`Future`
+async fn foo() { ... }
 
-Polling
+->
+
+fn foo() { async { ... } }
+```
+
+Now `foo()` returns a `Future`, which will not run until it is `.await`ed.
+
+```rust
+// await
+
+foo().await
+```
+
+---
+
+```rust
+pub trait Future {
+    type Output;
+
+    // Required method
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+}
+```
+
+Calling `.await` on a `Future` schedules it for the async executor, which then
+calls `poll()` whenever there are resources available.
+
+If the `Future` is finished, it will return `Poll::Ready(val)`.
+
+If the `Future` is not finished, it will return `Poll::Pending` <b>AND</b> later
+call `.wake()` from `cx`, which indicates that this function is ready to be
+`poll()`ed again by the scheduler.
+
+---
+
+## Tokio
+
+The most widely used async runtime in the Rust ecosystem.
+
+```
+tokio = { version = "1.48.0", features = ["full"] }
+```
+
+---
+
+```rust
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let listener = TcpListener::bind("127.0.0.1:8080").await?;
+    loop {
+        let (mut socket, _) = listener.accept().await?;
+        tokio::spawn(async move {
+            let mut buf = [0; 1024];
+            loop {
+                let n = match socket.read(&mut buf).await {
+                    Ok(0) => return, // socket closed, return from loop
+                    Ok(n) => n,
+                    Err(e) => {
+                        eprintln!("failed to read from socket; err = {:?}", e);
+                        return;
+                    }
+                };
+                // write the data back
+                if let Err(e) = socket.write_all(&buf[0..n]).await {
+                    eprintln!("failed to write to socket; err = {:?}", e);
+                    return;
+                }
+            }
+        });
+    }
+}
+```
+
+---
+
+```rust
+// tokio::task::spawn
+
+pub fn spawn<F>(future: F) -> JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+
+```
+
+---
+
+## Multi-threaded by default
+
+Tokio is a multi-threaded work-stealing approach to async.
+
+- Async tasks are executed on all cores of the system across multiple threads.
+- Whenever `Futures` are polled, if the workload between threads is not in
+  balance, idle threads might 'steal' the task from another.
+- In between `poll()` calls, the `Future` might need to switch to another
+  thread, which is why the `Send` trait bound is needed to guarantee safety.
+
+---
+
+## 'static and async
+
+Tasks in async runtimes may outlive the scope they were created in, so they
+often have `'static` as a trait bound.
+
+-> Borrowed data must live as long as the task
+
+-> In synchronous Rust, borrowing data across function calls is common, but in
+async Rust it is difficult
+
+-> Async Rust is fundamentally different
+
+---
+
+<span class="blue">"The Original Sin of Rust async programming is making it
+multi-threaded by default. If premature optimization is the root of all evil,
+this is the mother of all premature optimizations, and it curses all your code
+with the unholy `Send + 'static`, or worse yet `Send + Sync + 'static`, which
+just kills all the joy of actually writing Rust."</span>
+
+<small>Maciej Hirsz</small>
+
+---
+
+## The effects
+
+- You get great performance OotB
+
+- You have more complexity
+
+- Conflict -- sometimes you might not want to work with threads and the trait
+  bounds associated with all that, but Tokio mandates it
+
+---
+
+## My takes
+
+- <b>Async Rust is still maturing</b>
+- Compatibility issues between sync and async code, and between async runtimes
+  - `async_compat` crate might help
+- `(Sync +) Send + 'static` might increase code complexity
+- Advanced langauge features like `Pin`
+
+-> Using async Rust likely increases maintenance burden
+
+---
+
+## Thank you! Questions?
+
+---
+
+## Extras
+
+---
+
+## FnOnce
+
+```rust
+fn consume<F>(func: F)
+    where F: FnOnce() -> String
+{
+    println!("Consumed: {}", func());
+    // Invoking `func()` again -> compile error
+}
+
+let x = String::from("x");
+let move_and_return_x_closure = move || x;
+consume(move_and_return_x_closure);
+// Invoking `move_and_return_x_closure` again -> compile error
+// Using `x` again -> compile error
+```
