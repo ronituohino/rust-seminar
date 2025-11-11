@@ -22,6 +22,17 @@ A short overview of threading, channels, and async.
 
 ---
 
+Not an expert, just a rough look at how things are.
+
+Good resources:
+
+- Async Book
+- The State of Async Rust: Runtimes
+- Tokio docs - tutorial: Async in depth
+  - Building a mini tokio
+
+---
+
 ## Terminology
 
 - Serial, Sequential: Finish `A`, then finish `B`, then finish `C`
@@ -45,7 +56,7 @@ A short overview of threading, channels, and async.
 
 ---
 
-## Threads
+### Threads
 
 (std)
 
@@ -104,7 +115,7 @@ fn main() {
 
 ---
 
-## Go - goroutines and channels
+### Go - goroutines and channels
 
 "Don't communicate by sharing memory; share memory by communicating"  
 <small>(R.Pike)</small>
@@ -184,13 +195,13 @@ where
 
 ---
 
-## Send
+### Send
 
 Any type that implements `Send` can transfer ownership between threads safely.
 
 e.g. `Rc<T>` does not implement `Send`, but `Arc<T>` does.
 
-## Sync
+### Sync
 
 Any type that implements `Sync` can be referenced from multiple threads safely.
 
@@ -209,7 +220,7 @@ traits also automatically implement `Send` and `Sync`.
 
 ---
 
-## 'static as trait bound
+### 'static as trait bound
 
 Mandates that the type does not contain any non-static references. This means
 the receiver can hold on to the type indefinitely without it becoming invalid
@@ -221,7 +232,7 @@ until they decide to drop it.
 
 ---
 
-## Generally
+### Generally
 
 The idea of `async/await` and `Task/Promise/Future` semantics in programming
 languages is to have better control over asynchronous operations while keeping
@@ -234,11 +245,9 @@ code simple.
 
 ---
 
-## In Rust
+### In Rust
 
 ```rust
-// async
-
 async fn foo() { ... }
 
 ->
@@ -246,11 +255,11 @@ async fn foo() { ... }
 fn foo() { async { ... } }
 ```
 
-Now `foo()` returns a `Future`, which will not run until it is `.await`ed.
+`foo()` returns an anonymously typed object that implements `Future`
+
+A `Future` will not run until it is `.await`ed.
 
 ```rust
-// await
-
 foo().await
 ```
 
@@ -276,13 +285,63 @@ call `.wake()` from `cx`, which indicates that this function is ready to be
 
 ---
 
-## Tokio
+### Async Executors
+
+---
+
+### Embassy
+
+Is and embedded systems framework, which has a built-in async executor.
+
+---
+
+```rust
+#[embassy::task]
+async fn button_waiter(
+    mut button: ExtiInput<'static, PC13>,
+    button_pressed: &'static AtomicBool,
+    mut button_processed: Output<'static, PG1>,
+) {
+    let mut trigger_count = 0;
+
+    loop {
+        button_processed.set_low().unwrap();
+        button.wait_for_rising_edge().await;
+        button_processed.set_high().unwrap();
+        trigger_count += 1;
+
+        ...
+    }
+}
+```
+
+---
+
+### smol
+
+Wrapper for `std` function implementations with `async` and `await` semantics.
+
+```rust
+use smol::{io, net, prelude::*, Unblock};
+
+fn main() -> io::Result<()> {
+    smol::block_on(async {
+        let mut stream = net::TcpStream::connect("example.com:80").await?;
+        let req = b"GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
+        stream.write_all(req).await?;
+
+        let mut stdout = Unblock::new(std::io::stdout());
+        io::copy(stream, &mut stdout).await?;
+        Ok(())
+    })
+}
+```
+
+---
+
+### Tokio
 
 The most widely used async runtime in the Rust ecosystem.
-
-```
-tokio = { version = "1.48.0", features = ["full"] }
-```
 
 ---
 
@@ -331,7 +390,7 @@ where
 
 ---
 
-## Multi-threaded by default
+### Multi-threaded by default
 
 Tokio is a multi-threaded work-stealing approach to async.
 
@@ -343,7 +402,7 @@ Tokio is a multi-threaded work-stealing approach to async.
 
 ---
 
-## 'static and async
+### 'static and async
 
 Tasks in async runtimes may outlive the scope they were created in, so they
 often have `'static` as a trait bound.
@@ -357,6 +416,12 @@ async Rust it is difficult
 
 ---
 
+Tokio can be configured to be single-threaded only, but `tokio::spawn` requires
+`Futures` to implement `Send`. This can be avoided with `LocalSet` and
+`spawn_local` but they are not the main focus in Tokio.
+
+---
+
 <span class="blue">"The Original Sin of Rust async programming is making it
 multi-threaded by default. If premature optimization is the root of all evil,
 this is the mother of all premature optimizations, and it curses all your code
@@ -367,7 +432,7 @@ just kills all the joy of actually writing Rust."</span>
 
 ---
 
-## The effects
+### The effects
 
 - You get great performance OotB
 
@@ -413,4 +478,17 @@ let move_and_return_x_closure = move || x;
 consume(move_and_return_x_closure);
 // Invoking `move_and_return_x_closure` again -> compile error
 // Using `x` again -> compile error
+```
+
+---
+
+## Rayon
+
+```rust
+use rayon::prelude::*;
+fn sum_of_squares(input: &[i32]) -> i32 {
+    input.par_iter() // <-- just change that!
+         .map(|&i| i * i)
+         .sum()
+}
 ```
