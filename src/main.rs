@@ -1,3 +1,5 @@
 mod samples;
 
-fn main() {}
+fn main() {
+    samples::some_stuff();
+}

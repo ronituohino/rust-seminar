@@ -87,69 +87,10 @@ fn main() {
 
 ---
 
-```rust
-use std::thread;
-use std::sync::{Arc, Mutex};
-
-fn main() {
-    let counter = Arc::new(Mutex::new(0));
-    let mut handles = vec![];
-    for i in 0..10 {
-        let counter = Arc::clone(&counter);
-        let handle = thread::spawn(move || {
-            let mut num = counter.lock().unwrap();
-            *num += i;
-        });
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    println!("Result: {}", *counter.lock().unwrap());
-}
-
-// Result: 45
-```
-
----
-
 ### Go - goroutines and channels
 
 "Don't communicate by sharing memory; share memory by communicating"  
 <small>(R.Pike)</small>
-
----
-
-```rust
-use std::sync::mpsc;
-use std::thread;
-
-fn main() {
-    let (tx, rx) = mpsc::channel::<i32>();
-    let mut handles = vec![];
-    for i in 1..10 {
-        let tx_h = tx.clone();
-        let handle = thread::spawn(move || {
-            tx_h.send(i).unwrap();
-        });
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    let mut total = 0;
-    for v in rx.try_iter() {
-        total += v;
-    }
-    println!("Got: {total}");
-}
-
-// Got: 45
-```
 
 ---
 
